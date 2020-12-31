@@ -59,7 +59,6 @@ def train_teacher(teacher, data_train_loader, data_test_loader, optimizer, num_e
             if i%50 == 0:
                 print(f'Epoch {epoch}/{num_epochs}, Batch {i*50}; '\
                       f'loss = {objs.avg}, acc = {top1.avg}')
-
         # test
         objs.reset()
         top1.reset()
@@ -143,7 +142,7 @@ def main(opt):
 
         # for optimizing the teacher model
         if opt.train_teacher:
-            data_train = torchvision.datasets.ImageNet( opt.data_dir, 
+            data_train = torchvision.datasets.ImageNet(opt.data_dir,
                                                        split = 'train',
                                                        transform = transform_train)
             data_train_loader = DataLoader( data_train, batch_size = opt.batch_size,
@@ -337,12 +336,11 @@ def main(opt):
 
     # train the teacher model on the specified dataset
     if opt.train_teacher: 
-        train_teacher( teacher, 
-                       data_train_loader, 
-                       data_test_loader,
-                       optimizer,
-                       opt.n_epochs_teacher
-                       )
+        train_teacher(teacher, 
+                      data_train_loader, 
+                      data_test_loader,
+                      optimizer,
+                      opt.n_epochs_teacher)
 
     if torch.cuda.device_count() > 1:
         teacher = nn.DataParallel(teacher)
@@ -350,8 +348,8 @@ def main(opt):
         net = nn.DataParallel(net)
     
     criterion = torch.nn.CrossEntropyLoss().cuda()
-    test( teacher, data_test_loader)
-
+    if opt.pretest:
+        test( teacher, data_test_loader)
 
     # ----------
     #  Training
@@ -413,25 +411,6 @@ def main(opt):
                          '[loss_kd: {loss_kd.item()}]' )
 
         test(net, data_test_loader)
-        #with torch.no_grad():
-        #    for i, (images, labels) in enumerate(data_test_loader):
-        #        images = images.cuda()
-        #        labels = labels.cuda()
-        #        net.eval()
-        #        output = net(images)
-        #        avg_loss += criterion(output, labels).sum()
-        #        pred = output.data.max(1)[1]
-        #        total_correct += pred.eq(labels.data.view_as(pred)).sum()
-        #        print( f'finished {i}/{len(data_test_loader)}' )
-
-        #avg_loss /= len(data_test)
-        #print( f'Test Avg. Loss: {avg_loss.data.item()},\
-        #       Accuracy: { float(total_correct)/len(data_test)}' )
-
-        #accr = round(float(total_correct) / len(data_test), 4)
-        #if accr > accr_best:
-        #    torch.save(net,opt.output_dir + 'student')
-        #    accr_best = accr
 
 if __name__ == '__main__':
 
@@ -440,12 +419,14 @@ if __name__ == '__main__':
     parser.add_argument('--dataset', type=str, default='MNIST', 
                         choices=['MNIST', 'cifar10', 'cifar100', 'imagenet'],
                         help = 'path to the dataset folder')
-    parser.add_argument('--data_dir', type=str, default='',
+    parser.add_argument('--data_dir', type=str, default='./',
                         help = 'path to the dataset folder')
     
     parser.add_argument('--train_teacher', action = 'store_true',
                        help = 'whether to train the teacher model from scratch' )
-
+    parser.add_argument('--pretest', action = 'store_true',
+                       help = 'whether to test the teacher model'
+                              ' before training the student model')
     parser.add_argument('--teacher_model_name', type = str, 
                         default = 'wide_resnet50_2',
                         choices = ['none', 'resnet18', 'inception_v3', 'googlenet', 
@@ -460,12 +441,12 @@ if __name__ == '__main__':
                        help = 'all the torchvision models are applicable'
                               ' please check https://pytorch.org/docs/stable/'
                               'torchvision/models.html' )
-    parser.add_argument('--teacher_dir', type=str, default='',
+    parser.add_argument('--teacher_dir', type=str, default='./teachers',
                         help = 'path to the folder of the teacher model checkpoint')
     parser.add_argument('--n_epochs_teacher', type=int, default=200, 
-                        help='number of epochs of training')
+                        help='number of epochs to train teachers')
     parser.add_argument('--n_epochs', type=int, default=200, 
-                        help='number of epochs of training')
+                        help='number of epochs to train students')
     parser.add_argument('--batch_size', type=int, default=512)
     parser.add_argument('--lr_G', type=float, default=0.2, help='learning rate')
     parser.add_argument('--lr_S', type=float, default=2e-3, help='learning rate')
@@ -477,8 +458,11 @@ if __name__ == '__main__':
                         help='number of image channels')
     parser.add_argument('--oh', type=float, default=1, help='one hot loss')
     parser.add_argument('--ie', type=float, default=5, 
-                        help='information entropy loss')
-    parser.add_argument('--a', type=float, default=0.1, help='activation loss')
+                        help='information entropy loss, urge the generator to'
+                             ' produce data with balanced classes')
+    parser.add_argument('--a', type=float, default=0.1,
+                        help='activation loss, the absolute value of activation'
+                             ' right before the fully connected layer')
     parser.add_argument('--output_dir', type=str, default='./')
     opt = parser.parse_args()
 
