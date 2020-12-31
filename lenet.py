@@ -8,7 +8,6 @@ import torch.nn as nn
 
 
 class LeNet5(nn.Module):
-
     def __init__(self):
         super(LeNet5, self).__init__()
 
@@ -40,11 +39,10 @@ class LeNet5(nn.Module):
         if out_feature == False:
             return output
         else:
-            return output,feature
-    
+            return output, feature
+
 
 class LeNet5Half(nn.Module):
-
     def __init__(self):
         super(LeNet5Half, self).__init__()
 
@@ -76,4 +74,4 @@ class LeNet5Half(nn.Module):
         if out_feature == False:
             return output
         else:
-            return output,feature
+            return output, feature
